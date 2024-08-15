@@ -4,8 +4,6 @@
 
 This is a binary classification model that sorts out unsuitable imagery for shoreline extraction (among other applications). It was trained on over a million coastal satellite images from around the world. It uses an Xception-esque architecture.
 
-4. We don't want to manually sort images anymore. This is time-consuming and hurts our eyes.
-
 ![training data](Figures/ImageSuitability/spatial_domain.png)
 
 Above shows ROI locations where images were pulled from to train this model.
@@ -32,7 +30,9 @@ Above shows the ROC curve. The RGB model is slightly more effective than the gra
 
 # Image Segmentation Filter
 
-This is a binary classification model that sorts out bad segmentation outputs. It was trained on just over 2,000 images from around the world. It's a pretty basic 2D convolutional neural network. We need this because:
+This is a binary classification model that sorts out bad segmentation outputs. It was trained on just over 2,000 images from around the world. It's a pretty basic 2D convolutional neural network. 
+
+![seg filter ex](Figures/ImageSegmentationFilter/example_seg_filter.png)
 
 # Shoreline Change Envelope (KDE filter)
 
