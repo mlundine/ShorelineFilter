@@ -34,6 +34,20 @@ This is a binary classification model that sorts out bad segmentation outputs. I
 
 ![seg filter ex](Figures/ImageSegmentationFilter/example_seg_filter.png)
 
+Above are some examples of 'good' and 'bad' outputs.
+
+![seg filter thresh](Figures/ImageSegmentationFilter/optimum_threshold.png)
+
+Above are curves that indicate the optimum threshold to run the model at in practice.
+
+![test scores seg](Figures/ImageSegmentationFilter/test_scores.png)
+
+Above is the distribution of sigmoid scores (probability of a good segmentation) from the test dataset.
+
+![roc curve seg](Figures/ImageSegmentationFilter/ROC_curve.png)
+
+Above is the ROC curve for this model.
+
 # Shoreline Change Envelope (KDE filter)
 
 This is just a method for computing a heat map of the extracted shoreline points, and then converting that heat map into a polygon feature that can be used as a spatial filter for extracted shorelines. Basically, we remove erroneous shoreline points by only keeping where most of the shorelines extracted from a long timeseries of satellite imagery fall. Shoreline points way outside of the average location get thrown out.
