@@ -185,7 +185,7 @@ class Window(QMainWindow):
         segmentation_filter.clicked.connect(lambda: self.run_image_segmentation_filter(segmentation_filter_threshold.value()))
         segmentation_filter_multi.clicked.connect(lambda: self.run_multi_image_segmentation_filter(segmentation_filter_threshold.value()))
         spatial_kde_filter.clicked.connect(lambda: self.run_spatial_kde_filter(radius_slider.value(), cell_size_slider.value(), buffer_slider.value()))
-        spatial_kde_filter_multi.clicked.connect(lambda: self.run_multi_spatial_kde_filter())
+        spatial_kde_filter_multi.clicked.connect(lambda: self.run_multi_spatial_kde_filter(radius_slider.value(), cell_size_slider.value(), buffer_slider.value()))
         
         #Scroll policies
         self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
