@@ -321,6 +321,7 @@ def run_inference_rgb(path_to_model_ckpt,
     im_classes = [None]*len(im_paths)
     i=0
     for im_path in im_paths:
+        print(im_path)
         img = keras.utils.load_img(im_path, color_mode='rgb',target_size=image_size)
         img_array = keras.utils.img_to_array(img)
         img_array = tf.expand_dims(img_array, 0)

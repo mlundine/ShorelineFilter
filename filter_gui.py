@@ -43,8 +43,8 @@ class Window(QMainWindow):
         home = str(QFileDialog.getExistingDirectory(self, "Select RGB Image Folder"))
         if home:        
             image_filter.run_inference_rgb(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
-                                           os.path.join(home, 'jpg_files', 'preprocessed', 'RGB'),
-                                           os.path.join(home, 'jpg_files', 'preprocessed', 'RGB'),
+                                           home,
+                                           home,
                                            os.path.join(home, 'good_bad.csv'),
                                            threshold
                                            )
@@ -129,6 +129,7 @@ class Window(QMainWindow):
         #segmentation filter button
         segmentation_filter = QPushButton('Segmentation Filter Single Session')
         self.vbox.addWidget(segmentation_filter, 0, 1)
+        
         #segmentation filter multiple button
         segmentation_filter_multi = QPushButton('Segmentation Filter Multiple Sessions')
         self.vbox.addWidget(segmentation_filter_multi, 1, 1)
