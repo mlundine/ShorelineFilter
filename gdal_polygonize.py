@@ -1,4 +1,3 @@
-#!C:/Users/MarkLundine/anaconda3/envs/rasterguru\python.exe
 # -*- coding: utf-8 -*-
 # ******************************************************************************
 #  $Id: gdal_polygonize.py cc9448e548718763514f757da1abdcfdd0a39615 2019-05-21 00:11:23 +0200 Even Rouault $
