@@ -13,6 +13,10 @@ import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
 
+def get_immediate_subdirectories(a_dir):
+    return [name for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name))]
+
 def scheduler(epoch, lr):
     return lr * np.exp(-0.1) 
 
@@ -445,7 +449,36 @@ def training(path_to_training_data,
     hist_df.to_csv(hist_csv_file, index=False)    
 
     return best_ckpt_file
-    
+
+def inference_multiple_sessions(home, threshold, model='rgb'):
+    """
+    Runs filter on multiple CoastSeg data sessions, will skip a site if there is already a good_bad.csv
+    inputs:
+    home (str): path to where each data folder is
+    """
+    sites = get_immediate_subdirectories(home)
+    for site in sites:
+        site = os.path.join(home, site)
+        csv_path =  os.path.join(site, 'good_bad.csv')
+        if os.path.isfile(csv_path):
+            print('skip ' + site)
+            continue
+        else:
+            print('doing ' + site)
+            if model=='rgb':
+                run_inference_rgb(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                                  os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+                                  os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+                                  os.path.join(site, 'good_bad.csv'),
+                                  threshold
+                                  )
+            else:
+                run_inference_gray(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+                                   os.path.join(site, 'good_bad.csv'),
+                                   threshold
+                                   )                
 ##"""
 ##Sample Train
 ##"""
@@ -459,9 +492,4 @@ def training(path_to_training_data,
 # """
 # Sample Call on Test Dataset
 # """
-# run_inference_gray("""path/to/best.h5""",
-#              """path/to/jpgs_directory""",
-#              """path/to/output_directory""",
-#              """path/to/output_directory/output.csv""",
-#              0.1
-#              )
+

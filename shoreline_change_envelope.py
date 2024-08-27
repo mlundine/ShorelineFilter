@@ -21,6 +21,10 @@ from rasterio.transform import from_origin
 from shapely.geometry import box
 from skimage.filters import threshold_otsu
 
+def get_immediate_subdirectories(a_dir):
+    return [name for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name))]
+
 def wgs84_to_utm_df(geo_df):
     """
     Converts wgs84 to UTM
@@ -168,7 +172,8 @@ def buffer_otsu_vector(in_geojson, out_geojson, buffer_value):
 def get_point_density_kde(extracted_shorelines_points_path, 
                           point_density_kde_path,
                           kde_radius=80,
-                          cell_size=15):
+                          cell_size=15,
+                          buffer=50):
     """
     Makes a point density heat map and saves as a geotiff using spatial-kde
     inputs:
@@ -196,5 +201,47 @@ def get_point_density_kde(extracted_shorelines_points_path,
                            weight_col = None,
                            scaled = True
                            )
-    
-    return point_density_kde_path
+    compute_otsu_threshold(point_density_kde_path, otsu_path)
+    binary_raster_to_vector(otsu_path, shoreline_change_envelope_path)
+    buffer_otsu_vector(shoreline_change_envelope_path, shoreline_change_envelope_buffer_path)
+
+    return shoreline_change_envelope_buffer_path
+
+def get_point_density_kde_multiple_sessions(home,
+                                            kde_radius=80,
+                                            cell_size=15,
+                                            buffer=50):
+    """
+    Computes spatial kde on multiple coastseg shoreline extraction sessions
+    inputs:
+    home (str): path to the sessions
+    kde_radius (int): radius for the kde
+    cell_size (int): cell size of kde raster
+    """
+    sites = get_immediate_subdirectories(home)
+    for site in sites:
+        site = os.path.join(home, site)
+        extracted_shorelines_points_path = os.path.join(site, 'extracted_shorelines_points.geojson')
+        point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
+        otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
+        shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
+        shoerline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
+        if os.path.isfile(point_density_kde_path):
+            print('skip ' + site)
+            continue
+        else:
+            print('doing ' + site)
+            get_point_density_kde(extracted_shorelines_points_path,
+                                  point_density_kde_path,
+                                  otsu_path,
+                                  shoreline_change_envelope_path,
+                                  shoreline_change_envelope_buffer_path,
+                                  point_density_kde_path,
+                                  kde_radius=kde_radius,
+                                  cell_size=cell_size)
+            
+    return shoreline_change_envelope_buffer_path
+
+
+
+            
