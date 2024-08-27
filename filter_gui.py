@@ -1,7 +1,7 @@
 """
 Shoreline Filters for CoastSeg (image suitability, segmentation filter, spatial KDE)
 Mark Lundine, USGS
-Requires tensorflow, pandas, numpy, pyqt, matplotlib, python=3.10
+Requires tensorflow, pandas, numpy, pyqt, matplotlib, spatial-kde, rasterio, gdal, python=3.10
 """
 #basic imports
 import os
