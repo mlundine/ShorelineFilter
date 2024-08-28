@@ -56,7 +56,7 @@ class Window(QMainWindow):
         if home:        
             image_filter.inference_multiple_sessions(home, threshold, model='rgb')
 
-    def run_segmentation_filter(self, threshold):
+    def run_image_segmentation_filter(self, threshold):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         home = str(QFileDialog.getExistingDirectory(self, "Select RGB Segmentation Image Folder"))
@@ -84,7 +84,7 @@ class Window(QMainWindow):
             point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
             otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
             shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
-            shoerline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
+            shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
             shoreline_change_envelope.get_point_density_kde(extracted_shorelines_points,
                                                             point_density_kde_path,
                                                             otsu_path,

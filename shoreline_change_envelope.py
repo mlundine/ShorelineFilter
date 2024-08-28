@@ -171,6 +171,9 @@ def buffer_otsu_vector(in_geojson, out_geojson, buffer_value):
 
 def get_point_density_kde(extracted_shorelines_points_path, 
                           point_density_kde_path,
+                          otsu_path,
+                          shoreline_change_envelope_path,
+                          shoreline_change_envelope_buffer_path,
                           kde_radius=80,
                           cell_size=15,
                           buffer=50):
@@ -197,7 +200,7 @@ def get_point_density_kde(extracted_shorelines_points_path,
                            radius=kde_radius,
                            output_path=point_density_kde_path,
                            output_pixel_size=cell_size,
-                           output_drive = 'GTiff',
+                           output_driver = 'GTiff',
                            weight_col = None,
                            scaled = True
                            )
