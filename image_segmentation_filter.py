@@ -71,7 +71,6 @@ def define_model(input_shape, num_classes=2):
     x = layers.MaxPooling2D()(x)
     x = layers.Conv2D(32, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D()(x)
-    x = layers.BatchNormalization()(x)
     x = layers.Conv2D(64, 3, padding='same', activation='relu')(x)
     x = layers.BatchNormalization()(x)
     x = layers.GlobalAveragePooling2D()(x)

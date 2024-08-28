@@ -62,9 +62,9 @@ class Window(QMainWindow):
         home = str(QFileDialog.getExistingDirectory(self, "Select RGB Segmentation Image Folder"))
         if home:              
             image_segmentation_filter.run_inference_rgb(os.path.join(os.getcwd(), 'models', 'segmentation_rgb', 'best_seg.h5'),
-                                                        os.path.join(home, 'jpg_files', 'preprocessed', 'RGB'),
-                                                        os.path.join(home, 'jpg_files', 'preprocessed', 'RGB'),
-                                                        os.path.join(home, 'good_bad.csv'),
+                                                        os.path.join(home),
+                                                        os.path.join(home),
+                                                        os.path.join(home, 'good_bad_seg.csv'),
                                                         threshold
                                                         )
         
