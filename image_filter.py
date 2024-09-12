@@ -220,8 +220,12 @@ def sort_images(inference_df_path,
     inference_df_path (str): path to the csv containing model results
     output_folder (str): path to the directory containing the inference images
     """
+    good_nir = os.path.join(os.path.dirname(output_folder), 'NIR')
+    bad_nir = os.path.join(good_nir, 'bad')
+    good_swir = os.path.join(os.path.dirname(output_folder), 'SWIR')
+    bad_swir = os.path.join(good_swir, 'bad')
     bad_dir = os.path.join(output_folder, 'bad')
-    dirs = [output_folder, bad_dir]
+    dirs = [output_folder, bad_dir, bad_nir, bad_swir]
     for d in dirs:
         try:
             os.mkdir(d)
@@ -230,10 +234,16 @@ def sort_images(inference_df_path,
     inference_df = pd.read_csv(inference_df_path)
     for i in range(len(inference_df)):
         input_image_path = inference_df['im_paths'].iloc[i]
-        im_name = os.path.basename(input_image_path) 
+        im_name = os.path.basename(input_image_path)
+        input_image_path_nir = os.path.join(good_swir, im_name)
+        input_image_path_swir = os.path.join(good_nir, im_name)
         if inference_df['model_scores'].iloc[i] < threshold:
             output_image_path = os.path.join(bad_dir, im_name)
+            output_image_path_nir = os.path.join(bad_nir, im_name)
+            output_image_path_swir = os.path.join(bad_swir, im_name)
             shutil.move(input_image_path, output_image_path)
+            shutil.move(input_image_path_nir, output_image_path_nir)
+            shutil.move(input_image_path_swir, output_image_path_swir)
         
 def run_inference_gray(path_to_model_ckpt,
                        path_to_inference_imgs,
