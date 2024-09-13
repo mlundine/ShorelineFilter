@@ -235,15 +235,29 @@ def sort_images(inference_df_path,
     for i in range(len(inference_df)):
         input_image_path = inference_df['im_paths'].iloc[i]
         im_name = os.path.basename(input_image_path)
-        input_image_path_nir = os.path.join(good_swir, im_name)
-        input_image_path_swir = os.path.join(good_nir, im_name)
+        im_name_no_ext = os.path.splitext(im_name)[0]
+        sat = im_name_no_ext[-2:]
+        idx = im_name_no_ext.find('RGB')
+        im_name_nir = im_name_no_ext[0:idx]+'NIR_'+sat+'.jpg'
+        im_name_swir = im_name_no_ext[0:idx]+'SWIR_'+sat+'.jpg'
+        input_image_path_nir = os.path.join(good_nir, im_name_nir)
+        input_image_path_swir = os.path.join(good_swir, im_name_swir)
         if inference_df['model_scores'].iloc[i] < threshold:
             output_image_path = os.path.join(bad_dir, im_name)
-            output_image_path_nir = os.path.join(bad_nir, im_name)
-            output_image_path_swir = os.path.join(bad_swir, im_name)
-            shutil.move(input_image_path, output_image_path)
-            shutil.move(input_image_path_nir, output_image_path_nir)
-            shutil.move(input_image_path_swir, output_image_path_swir)
+            output_image_path_nir = os.path.join(bad_nir, im_name_nir)
+            output_image_path_swir = os.path.join(bad_swir, im_name_swir)
+            try:
+                shutil.move(input_image_path, output_image_path)
+            except:
+                pass
+            try:
+                shutil.move(input_image_path_nir, output_image_path_nir)
+            except:
+                pass
+            try:
+                shutil.move(input_image_path_swir, output_image_path_swir)
+            except:
+                pass
         
 def run_inference_gray(path_to_model_ckpt,
                        path_to_inference_imgs,
@@ -489,7 +503,23 @@ def inference_multiple_sessions(home, threshold, model='rgb'):
                                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                    os.path.join(site, 'good_bad.csv'),
                                    threshold
-                                   )                
+                                   )
+
+def sort_multiple_sessions(home, threshold, model='rgb'):
+    """
+    Runs filter on multiple CoastSeg data sessions, will skip a site if there is already a good_bad.csv
+    inputs:
+    home (str): path to where each data folder is
+    """
+    sites = get_immediate_subdirectories(home)
+    for site in sites:
+        site = os.path.join(home, site)
+        csv_path =  os.path.join(site, 'good_bad.csv')
+        print('doing ' + site)
+        sort_images(csv_path,
+                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+                    threshold=threshold)
+
 ##"""
 ##Sample Train
 ##"""
