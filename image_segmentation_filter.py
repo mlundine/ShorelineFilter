@@ -51,6 +51,10 @@ def data_augmentation(images):
         layers.RandomZoom(0.5, 0.5),
         
     ]
+
+    for layer in data_augmentation_layers:
+        images = layer(images)
+        
     return images
 
 def define_model(input_shape, num_classes=2):
