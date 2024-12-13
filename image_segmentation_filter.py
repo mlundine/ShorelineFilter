@@ -57,7 +57,7 @@ def data_augmentation(images):
         
     return images
 
-def define_model(input_shape, num_classes=2):
+def define_model(input_shape, mode, num_classes=2):
     """
     Defines the classification model
     inputs:
@@ -66,7 +66,8 @@ def define_model(input_shape, num_classes=2):
     """
     inputs = keras.Input(shape=input_shape)
     # Entry block
-    x = data_augmentation(inputs)
+    if mode == 'train':
+        x = data_augmentation(inputs)
     # Entry block
     x = layers.Rescaling(1.0 / 255)(inputs)
     x = layers.Conv2D(16, 3, padding='same', activation='relu')(x)
@@ -104,7 +105,7 @@ def train_model_rgb(model,
     model_folder (str): path to save the model to
     epochs (int, optional): number of epochs to train for
     """
-    model = define_model(input_shape=image_size + (3,), num_classes=2)
+    model = define_model(input_shape=image_size + (3,), 'train', num_classes=2)
 
     ##this makes a plot of the model, you need pydot installed, 
     keras.utils.plot_model(model, to_file=os.path.join(model_folder, 'model_graph.png'), show_shapes=True)
@@ -179,7 +180,7 @@ def run_inference_rgb(path_to_model_ckpt,
     except:
         pass
     image_size = (512, 512)
-    model = define_model(input_shape=image_size + (3,), num_classes=2)
+    model = define_model(input_shape=image_size + (3,), 'inference', num_classes=2)
     model.load_weights(path_to_model_ckpt)
     types = ('*.jpg', '*.jpeg', '*.png') 
     im_paths = []
@@ -282,7 +283,7 @@ def training(path_to_training_data,
     train_ds, val_ds = load_dataset_rgb(path_to_training_data,
                                         image_size,
                                         32)
-    model = define_model(input_shape=image_size + (3,), num_classes=2)
+    model = define_model(input_shape=image_size + (3,), 'train', num_classes=2)
         
     model, history, ckpt_file = train_model_rgb(model,
                                                 image_size,
