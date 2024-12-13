@@ -146,7 +146,7 @@ def train_model_rgb(model,
     model_folder (str): path to save the model to
     epochs (int, optional): number of epochs to train for
     """
-    model = define_model(input_shape=image_size + (3,), 'train', num_classes=2)
+    model = define_model(input_shape=image_size + (3,), mode='train', num_classes=2)
 
     ##this makes a plot of the model, you need pydot installed, 
     keras.utils.plot_model(model, to_file=os.path.join(model_folder, 'model_graph.png'), show_shapes=True)
@@ -189,7 +189,7 @@ def train_model_gray(model,
     model_folder (str): path to save the model to
     epochs (int, optional): number of epochs to train for
     """
-    model = define_model(input_shape=image_size + (1,), 'train', num_classes=2)
+    model = define_model(input_shape=image_size + (1,), mode='train', num_classes=2)
 
     ##this makes a plot of the model, you need pydot installed, 
     keras.utils.plot_model(model, to_file=os.path.join(model_folder, 'model_graph.png'), show_shapes=True)
@@ -288,7 +288,7 @@ def run_inference_gray(path_to_model_ckpt,
     except:
         pass
     image_size = (128, 128)
-    model = define_model(input_shape=image_size + (1,), 'inference', num_classes=2)
+    model = define_model(input_shape=image_size + (1,), mode='inference', num_classes=2)
     model.load_weights(path_to_model_ckpt)
     types = ('*.jpg', '*.jpeg', '*.png') 
     im_paths = []
@@ -340,7 +340,7 @@ def run_inference_rgb(path_to_model_ckpt,
     except:
         pass
     image_size = (128, 128)
-    model = define_model(input_shape=image_size + (3,), 'inference', num_classes=2)
+    model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
     model.load_weights(path_to_model_ckpt)
     types = ('*.jpg', '*.jpeg', '*.png') 
     im_paths = []
@@ -448,7 +448,7 @@ def training(path_to_training_data,
         train_ds, val_ds = load_dataset_gray(path_to_training_data,
                                              image_size,
                                              32)
-        model = define_model(input_shape=image_size + (1,), 'train', num_classes=2)
+        model = define_model(input_shape=image_size + (1,), mode='train', num_classes=2)
         model, history, ckpt_file = train_model_gray(model,
                                                      image_size,
                                                      train_ds,
@@ -459,7 +459,7 @@ def training(path_to_training_data,
         train_ds, val_ds = load_dataset_rgb(path_to_training_data,
                                             image_size,
                                             32)
-        model = define_model(input_shape=image_size + (3,), 'train', num_classes=2)
+        model = define_model(input_shape=image_size + (3,), mode='train', num_classes=2)
         
         model, history, ckpt_file = train_model_rgb(model,
                                                     image_size,
