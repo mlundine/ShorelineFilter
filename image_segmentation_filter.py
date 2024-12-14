@@ -57,7 +57,7 @@ def data_augmentation(images):
         
     return images
 
-def (input_shape, mode, num_classes=2):
+def define_model(input_shape, mode, num_classes=2):
     """
     Defines the classification model
     inputs:
