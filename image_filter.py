@@ -268,7 +268,8 @@ def run_inference_gray(path_to_model_ckpt,
                        path_to_inference_imgs,
                        output_folder,
                        result_path,
-                       threshold):
+                       threshold=0.446,
+                       sort=True):
     """
     Runs the trained model on images, classifying them either as good or bad
     Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
@@ -280,6 +281,7 @@ def run_inference_gray(path_to_model_ckpt,
     output_folder (str): path to save outputs to
     result_path (str): csv path to save results to
     threshold (float): threshold on sigmoid of model output (ex: 0.6 means mark images as good if model output is >= 0.6, or 60% sure it's a good image)
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
     returns:
     result_path (str): csv path of saved results
     """
@@ -311,16 +313,18 @@ def run_inference_gray(path_to_model_ckpt,
                        }
                       )
     df.to_csv(result_path)
-    sort_images(result_path,
-                output_folder,
-                threshold=threshold)
+    if sort == True:
+        sort_images(result_path,
+                    output_folder,
+                    threshold=threshold)
     return result_path
 
 def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,
                       result_path,
-                      threshold):
+                      threshold=0.335,
+                      sort=True):
     """
     Runs the trained model on images, classifying them either as good or bad
     Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
@@ -332,6 +336,7 @@ def run_inference_rgb(path_to_model_ckpt,
     output_folder (str): path to save outputs to
     result_path (str): csv path to save results to
     threshold (float): threshold on sigmoid of model output (ex: 0.6 means mark images as good if model output is >= 0.6, or 60% sure it's a good image)
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
     returns:
     result_path (str): csv path of saved results
     """
@@ -366,9 +371,10 @@ def run_inference_rgb(path_to_model_ckpt,
     print(result_path)
 
     df.to_csv(result_path)
-    sort_images(result_path,
-                output_folder,
-                threshold=threshold)
+    if sort == True:
+        sort_images(result_path,
+                    output_folder,
+                    threshold=threshold)
     return result_path
 
 def plot_history(history,
@@ -525,17 +531,68 @@ def sort_multiple_sessions(home, threshold, model='rgb'):
                     os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                     threshold=threshold)
 
-##"""
-##Sample Train
-##"""
+def train_and_test(dataset):
+    """
+    trains, tests, outputs metric figures
+    inputs:
+    dataset (str): path to the dataset
+                   dataset
+                          train
+                               good
+                               bad
+                          test
+                               good
+                               bad
+    """
+    try:
+        os.mkdir(os.path.join(os.getcwd(), 'test_results'))
+    except:
+        pass
+    ##train grayscale model
+    training(os.path.join(dataset,'train'),
+            os.getcwd(),
+            epochs=50,
+            mode='gray')
+    ##train rgb model
+    training(os.path.join(dataset,'train'),
+            os.getcwd(),
+            epochs=50,
+            mode='rgb')
+    ##test gray model
+    test_dir = os.path.join(dataset, 'test')
+    test_dir_good = os.path.join(dataset, 'test', 'bad')
+    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+                    test_dir_good,
+                    test_dir_good,
+                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_gray.csv'),
+                    threshold=0.20,
+                    sort=False)
+    test_dir = os.path.join(dataset, 'test')
+    test_dir_bad = os.path.join(dataset, 'test', 'good')
+    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+                    test_dir_bad,
+                    test_dir_bad,
+                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_gray.csv'),
+                    threshold=0.20,
+                    sort=False)
 
-# training(os.path.join(os.getcwd(),'dataset','train'),
-#         os.getcwd(),
-#         epochs=25,
-#         mode='gray')
-
-
-# """
-# Sample Call on Test Dataset
-# """
+    ##test rgb model
+    test_dir = os.path.join(dataset, 'test')
+    test_dir_good = os.path.join(dataset, 'test', 'bad')
+    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+                    test_dir_good,
+                    test_dir_good,
+                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_rgb.csv'),
+                    threshold=0.20,
+                    sort=False)
+    test_dir = os.path.join(dataset, 'test')
+    test_dir_bad = os.path.join(dataset, 'test', 'good')
+    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+                    test_dir_bad,
+                    test_dir_bad,
+                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_rgb.csv'),
+                    threshold=0.20,
+                    sort=False)
+    ##make figures
+    os.system('python metrics.py')
 
