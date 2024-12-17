@@ -57,7 +57,7 @@ def data_augmentation(images):
         
     return images
 
-def (input_shape, mode, num_classes=2):
+def define_model(input_shape, mode, num_classes=2):
     """
     Defines the classification model
     inputs:
@@ -321,9 +321,9 @@ def inference_multiple_sessions(home, threshold):
             continue
         else:
             print('doing ' + site)
-            run_inference_rgb(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
-                              os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
-                              os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
+            run_inference_rgb(os.path.join(os.getcwd(), 'models', 'segmentation_rgb', 'best.h5'),
+                              os.path.join(site),
+                              os.path.join(site),
                               os.path.join(site, 'good_bad_seg.csv'),
                               threshold
                               )
