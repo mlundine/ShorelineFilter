@@ -594,5 +594,5 @@ def train_and_test(dataset):
                     threshold=0.20,
                     sort=False)
     ##make figures
-    os.system('python metrics.py')
+    os.system('python metrics_image.py')
 

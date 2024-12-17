@@ -370,4 +370,4 @@ def train_and_test(dataset):
                     os.path.join(os.getcwd(), 'test_results', 'result_test_good_seg.csv'),
                     threshold=0.20,
                     sort=False)
-    os.system('python metrics.py')
+    os.system('python metrics_seg.py')
