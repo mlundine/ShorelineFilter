@@ -311,13 +311,13 @@ def training(path_to_training_data,
 
     return best_ckpt_file
 
-def inference_multiple_sessions(home, threshold):
+def inference_multiple_sessions(home, threshold, sort=True):
     """
     Runs filter on multiple CoastSeg segmentation sessions, will skip a site if there is already a good_bad.csv
     inputs:
     home (str): path to where each data folder is
     threshold (float): threshold value for model
-    
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
@@ -332,7 +332,8 @@ def inference_multiple_sessions(home, threshold):
                               os.path.join(site),
                               os.path.join(site),
                               os.path.join(site, 'good_bad_seg.csv'),
-                              threshold
+                              threshold,
+                              sort=sort
                               )
  
 def train_and_test(dataset):
