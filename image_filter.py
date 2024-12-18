@@ -12,6 +12,10 @@ from tensorflow.keras import layers
 import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
+import sys
+
+def get_script_path():
+    return os.path.dirname(os.path.abspath(__file__))
 
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
@@ -502,14 +506,14 @@ def inference_multiple_sessions(home, threshold, model='rgb'):
         else:
             print('doing ' + site)
             if model=='rgb':
-                run_inference_rgb(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                run_inference_rgb(os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5'),
                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                   os.path.join(site, 'good_bad.csv'),
                                   threshold
                                   )
             else:
-                run_inference_gray(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                run_inference_gray(os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5'),
                                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                    os.path.join(site, 'good_bad.csv'),
@@ -545,52 +549,52 @@ def train_and_test(dataset):
                                bad
     """
     try:
-        os.mkdir(os.path.join(os.getcwd(), 'test_results'))
+        os.mkdir(os.path.join(get_script_path(), 'test_results'))
     except:
         pass
     ##train grayscale model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50,
             mode='gray')
     ##train rgb model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50,
             mode='rgb')
     ##test gray model
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'bad')
-    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+    run_inference_gray(os.path.join(get_script_path(), 'models', 'gray', 'best.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_gray.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_gray.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'good')
-    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+    run_inference_gray(os.path.join(get_script_path(), 'models', 'gray', 'best.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_gray.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_gray.csv'),
                     threshold=0.20,
                     sort=False)
 
     ##test rgb model
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'bad')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'rgb', 'best.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_rgb.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_rgb.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'good')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'rgb', 'best.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_rgb.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_rgb.csv'),
                     threshold=0.20,
                     sort=False)
     ##make figures
