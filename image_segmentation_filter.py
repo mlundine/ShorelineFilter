@@ -13,6 +13,9 @@ import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
 
+def get_script_path():
+    return os.path.dirname(os.path.abspath(__file__))
+
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
@@ -160,7 +163,7 @@ def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,
                       result_path,
-                      threshold=0.457
+                      threshold=0.457,
                       sort=True):
     """
     Runs the trained model on images, classifying them either as good or bad
@@ -325,7 +328,7 @@ def inference_multiple_sessions(home, threshold):
             continue
         else:
             print('doing ' + site)
-            run_inference_rgb(os.path.join(os.getcwd(), 'models', 'segmentation_rgb', 'best.h5'),
+            run_inference_rgb(os.path.join(get_script_path(), 'models', 'segmentation_rgb', 'best_seg.h5'),
                               os.path.join(site),
                               os.path.join(site),
                               os.path.join(site, 'good_bad_seg.csv'),
@@ -346,28 +349,28 @@ def train_and_test(dataset):
                                bad
     """
     try:
-        os.mkdir(os.path.join(os.getcwd(), 'test_results'))
+        os.mkdir(os.path.join(get_script_path(), 'test_results'))
     except:
         pass
 
     ##train model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'bad')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'best_seg.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'best_seg.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_seg.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_seg.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'good')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'best_seg.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'best_seg.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_seg.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_seg.csv'),
                     threshold=0.20,
                     sort=False)
     os.system('python metrics_seg.py')

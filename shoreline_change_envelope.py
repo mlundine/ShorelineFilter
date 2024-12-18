@@ -21,6 +21,9 @@ from rasterio.transform import from_origin
 from shapely.geometry import box
 from skimage.filters import threshold_otsu
 
+def get_script_path():
+    return os.path.dirname(os.path.abspath(__file__))
+
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
@@ -142,7 +145,7 @@ def binary_raster_to_vector(in_tiff, out_geojson):
     outputs:
     out_geojson (str): path to the output vector file as geojson
     """
-    module = os.path.join(os.getcwd(), 'gdal_polygonize.py')
+    module = os.path.join(get_script_path(), 'gdal_polygonize.py')
     cmd = 'python ' + module + ' ' + in_tiff + ' ' + out_geojson + ' -mask ' + in_tiff + ' -ogr_format GeoJSON'
     os.system(cmd)
     return out_geojson
@@ -228,7 +231,7 @@ def get_point_density_kde_multiple_sessions(home,
         point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
         otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
         shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
-        shoerline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
+        shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
         if os.path.isfile(point_density_kde_path):
             print('skip ' + site)
             continue
@@ -244,7 +247,3 @@ def get_point_density_kde_multiple_sessions(home,
                                   cell_size=cell_size)
             
     return shoreline_change_envelope_buffer_path
-
-
-
-            
