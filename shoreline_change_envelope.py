@@ -21,13 +21,29 @@ from shapely.geometry import box
 from skimage.filters import threshold_otsu
 
 def get_script_path():
+    """
+    returns location of this module
+    """
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_immediate_subdirectories(a_dir):
+    """
+    returns the names of each immediate subdirectory in a_dir
+    """
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
 
 def join_model_scores(good_bad, good_bad_seg, shorelines_points):
+    """
+    joins the image suitability scores and
+    image segmentation scores to the extracted_shorelines_points.geojson
+
+    inputs:
+    good_bad (str): path to the image suitability scores
+    good_bad_seg (str): path to the image segmentation scores
+    shorelines_points (str): path to extracted_shorelines_points.geojson
+
+    """
     shorelines_points_gdf = gpd.read_file(shorelines_points)
     shorelines_points_gdf['date'] = pd.to_datetime(shorelines_points_gdf['date'], utc=True)
     good_bad_df = pd.read_csv(good_bad)
@@ -256,8 +272,8 @@ def get_point_density_kde(extracted_shorelines_points_path,
 
 def get_point_density_kde_multiple_sessions(home,
                                             kde_radius=80,
-                                            cell_size=15,
-                                            buffer=50,
+                                            cell_size=20,
+                                            buffer=30,
                                             im_thresh=0.335,
                                             seg_thresh=0.457):
     """
@@ -266,6 +282,9 @@ def get_point_density_kde_multiple_sessions(home,
     home (str): path to the sessions
     kde_radius (int): radius for the kde
     cell_size (int): cell size of kde raster
+    buffer (int): buffer radius for kde filter
+    im_thresh (float): threshold for image suitability filter
+    seg_thresh (float): threshold for segmentation filter
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
