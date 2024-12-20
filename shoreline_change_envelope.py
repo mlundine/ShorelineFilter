@@ -130,13 +130,9 @@ def point_density_grid(points_path, save_path, cell_size):
         raster[row_idx, col_idx] = row['point_count']
 
     raster = min_max_normalize(raster)
-    print(max(raster.ravel()))
-    print(min(raster.ravel()))
     raster = gaussian_filter(raster, sigma=3)  # Adjust sigma for smoothing level  
     raster = min_max_normalize(raster)
   
-    print(max(raster.ravel()))
-    print(min(raster.ravel()))
     ##making a path for the output grid
     point_density_grid_path = save_path
     ##save the grid
@@ -165,8 +161,6 @@ def compute_otsu_threshold(in_tiff, out_tiff):
     # Need to make nodata values zero or else the threshold will be just data vs. nodata
     # This works for our example because point density is always greater than or equal to zero.
     image[image==src.meta['nodata']]=0
-    print(min(image.ravel()))
-    print(max(image.ravel()))
     threshold = threshold_otsu(image)
     thresholds = threshold_multiotsu(image)
 
