@@ -19,31 +19,17 @@ import rasterio
 from rasterio.transform import from_origin
 from shapely.geometry import box
 from skimage.filters import threshold_otsu
+from skimage.filters import threshold_multiotsu
+from scipy.ndimage import gaussian_filter
 
 def get_script_path():
-    """
-    returns location of this module
-    """
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_immediate_subdirectories(a_dir):
-    """
-    returns the names of each immediate subdirectory in a_dir
-    """
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
 
 def join_model_scores(good_bad, good_bad_seg, shorelines_points):
-    """
-    joins the image suitability scores and
-    image segmentation scores to the extracted_shorelines_points.geojson
-
-    inputs:
-    good_bad (str): path to the image suitability scores
-    good_bad_seg (str): path to the image segmentation scores
-    shorelines_points (str): path to extracted_shorelines_points.geojson
-
-    """
     shorelines_points_gdf = gpd.read_file(shorelines_points)
     shorelines_points_gdf['date'] = pd.to_datetime(shorelines_points_gdf['date'], utc=True)
     good_bad_df = pd.read_csv(good_bad)
@@ -106,6 +92,11 @@ def utm_to_wgs84_df(geo_df):
     gdf_wgs84 = geo_df.to_crs(wgs84_crs)
     return gdf_wgs84
 
+def min_max_normalize(arr):
+    min_val = np.min(arr)
+    max_val = np.max(arr)
+    return (arr - min_val) / (max_val - min_val)
+
 def point_density_grid(points_path, save_path, cell_size):
     """
     This is a slow way of making a point density grid.
@@ -138,12 +129,20 @@ def point_density_grid(points_path, save_path, cell_size):
         col_idx = int((row.geometry.bounds[0] - minx) / cell_size)
         raster[row_idx, col_idx] = row['point_count']
 
+    raster = min_max_normalize(raster)
+    print(max(raster.ravel()))
+    print(min(raster.ravel()))
+    raster = gaussian_filter(raster, sigma=3)  # Adjust sigma for smoothing level  
+    raster = min_max_normalize(raster)
+  
+    print(max(raster.ravel()))
+    print(min(raster.ravel()))
     ##making a path for the output grid
     point_density_grid_path = save_path
     ##save the grid
     with rasterio.open(
         point_density_grid_path, 'w', driver='GTiff', height=raster.shape[0],
-        width=raster.shape[1], count=1, dtype=rasterio.uint8,
+        width=raster.shape[1], count=1, dtype='float32',
         crs=points_utm.crs, transform=transform
     ) as dst:
         dst.write(raster, 1)
@@ -166,10 +165,13 @@ def compute_otsu_threshold(in_tiff, out_tiff):
     # Need to make nodata values zero or else the threshold will be just data vs. nodata
     # This works for our example because point density is always greater than or equal to zero.
     image[image==src.meta['nodata']]=0
+    print(min(image.ravel()))
+    print(max(image.ravel()))
     threshold = threshold_otsu(image)
+    thresholds = threshold_multiotsu(image)
 
     # Apply the threshold to create a binary image
-    binary_image = image > threshold
+    binary_image = image > min(thresholds)
 
     # Define the metadata for the new geotiff
     transform = from_origin(src.bounds.left, src.bounds.top, src.res[0], src.res[1])
@@ -272,19 +274,20 @@ def get_point_density_kde(extracted_shorelines_points_path,
 
 def get_point_density_kde_multiple_sessions(home,
                                             kde_radius=80,
-                                            cell_size=20,
-                                            buffer=30,
+                                            cell_size=15,
+                                            buffer=50,
                                             im_thresh=0.335,
-                                            seg_thresh=0.457):
+                                            seg_thresh=0.457,
+                                            kde_thresh=0.10):
     """
     Computes spatial kde on multiple coastseg shoreline extraction sessions
     inputs:
     home (str): path to the sessions
     kde_radius (int): radius for the kde
     cell_size (int): cell size of kde raster
-    buffer (int): buffer radius for kde filter
     im_thresh (float): threshold for image suitability filter
     seg_thresh (float): threshold for segmentation filter
+    kde_thresh (float): threshold for kde filter
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
@@ -294,7 +297,7 @@ def get_point_density_kde_multiple_sessions(home,
         good_bad =  os.path.join(site, 'good_bad_seg.csv')
         good_bad_seg = os.path.join(site, 'good_bad.csv')
         if os.path.isfile(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'))==False:
-            join_model_scores(good_bad, good_bad_seg, extracted_shorelines_points_path )
+            join_model_scores(good_bad, good_bad_seg, extracted_shorelines_points_path)
         points_unfiltered = gpd.read_file(extracted_shorelines_points_path)
         points_image_filter = points_unfiltered[points_unfiltered['model_scores']>=im_thresh]
         points_seg_filter = points_unfiltered[points_unfiltered['model_scores_seg']>=im_thresh]
@@ -303,10 +306,13 @@ def get_point_density_kde_multiple_sessions(home,
         points_seg_filter.to_file(os.path.join(site, 'extracted_shorelines_points_seg_filter.geojson'))
         points_both_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'))
         points_both_filter_explode = points_both_filter.explode(index_index=True, index_parts=False)
+        points_both_filter_explode_kde_vals = points_both_filter_explode.copy()
         point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
         otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
         shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
         shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
+
+        
 
         get_point_density_kde(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'),
                                   point_density_kde_path,
@@ -316,6 +322,15 @@ def get_point_density_kde_multiple_sessions(home,
                                   kde_radius=kde_radius,
                                   cell_size=cell_size,
                                   buffer=buffer)
+        points_both_filter_explode_kde_vals = wgs84_to_utm_df(points_both_filter_explode_kde_vals)
+        coord_list = [(x, y) for x, y in zip(points_both_filter_explode_kde_vals["geometry"].x, points_both_filter_explode_kde_vals["geometry"].y)]
+        src = rasterio.open(point_density_kde_path)
+        points_both_filter_explode_kde_vals["kde_value"] = [x for x in src.sample(coord_list)]
+        for i in range(len(points_both_filter_explode_kde_vals["kde_value"])):
+            points_both_filter_explode_kde_vals["kde_value"].iloc[i] = float(points_both_filter_explode_kde_vals["kde_value"].iloc[i][0])
+        points_both_filter_explode_kde_vals = utm_to_wgs84_df(points_both_filter_explode_kde_vals)
+        points_both_filter_explode_kde_vals = points_both_filter_explode_kde_vals[points_both_filter_explode_kde_vals['kde_value']>kde_thresh].reset_index(drop=True)
+        points_both_filter_explode_kde_vals.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_kde_vals.geojson'))
         envelope = gpd.read_file(shoreline_change_envelope_buffer_path)
         points_image_seg_envelope_filter = gpd.sjoin(points_both_filter_explode, envelope, how="inner", predicate='within')
         points_image_seg_envelope_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_and_kde_filter.geojson'))
