@@ -130,9 +130,13 @@ def point_density_grid(points_path, save_path, cell_size):
         raster[row_idx, col_idx] = row['point_count']
 
     raster = min_max_normalize(raster)
+    print(max(raster.ravel()))
+    print(min(raster.ravel()))
     raster = gaussian_filter(raster, sigma=3)  # Adjust sigma for smoothing level  
     raster = min_max_normalize(raster)
   
+    print(max(raster.ravel()))
+    print(min(raster.ravel()))
     ##making a path for the output grid
     point_density_grid_path = save_path
     ##save the grid
@@ -161,6 +165,8 @@ def compute_otsu_threshold(in_tiff, out_tiff):
     # Need to make nodata values zero or else the threshold will be just data vs. nodata
     # This works for our example because point density is always greater than or equal to zero.
     image[image==src.meta['nodata']]=0
+    print(min(image.ravel()))
+    print(max(image.ravel()))
     threshold = threshold_otsu(image)
     thresholds = threshold_multiotsu(image)
 
@@ -290,25 +296,37 @@ def get_point_density_kde_multiple_sessions(home,
         extracted_shorelines_points_path = os.path.join(site, 'extracted_shorelines_points.geojson')
         good_bad =  os.path.join(site, 'good_bad_seg.csv')
         good_bad_seg = os.path.join(site, 'good_bad.csv')
-        if os.path.isfile(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'))==False:
+
+        ##join model scores to points file
+        try:
             join_model_scores(good_bad, good_bad_seg, extracted_shorelines_points_path)
+        except:
+            print('already joined')
+            pass
+        
+        ##making points files
+        ##unfiltered
         points_unfiltered = gpd.read_file(extracted_shorelines_points_path)
+        points_unfiltered['year'] = pd.to_datetime(points_unfiltered['date']).dt.year
+        
+        ##just image suitability filter
         points_image_filter = points_unfiltered[points_unfiltered['model_scores']>=im_thresh]
-        points_seg_filter = points_unfiltered[points_unfiltered['model_scores_seg']>=im_thresh]
-        points_both_filter = points_image_filter[points_image_filter['model_scores_seg']>=seg_thresh]
         points_image_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_filter.geojson'))
+        ##just seg filter
+        points_seg_filter = points_unfiltered[points_unfiltered['model_scores_seg']>=im_thresh]
         points_seg_filter.to_file(os.path.join(site, 'extracted_shorelines_points_seg_filter.geojson'))
+        ##image suitability and seg filter
+        points_both_filter = points_image_filter[points_image_filter['model_scores_seg']>=seg_thresh]
         points_both_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'))
-        points_both_filter_explode = points_both_filter.explode(index_index=True, index_parts=False)
-        points_both_filter_explode_kde_vals = points_both_filter_explode.copy()
+        
+        ##make paths for kde files
         point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
         otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
         shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
         shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
 
-        
-
-        get_point_density_kde(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'),
+        ##get kde files
+        get_point_density_kde(extracted_shorelines_points_path,
                                   point_density_kde_path,
                                   otsu_path,
                                   shoreline_change_envelope_path,
@@ -316,17 +334,39 @@ def get_point_density_kde_multiple_sessions(home,
                                   kde_radius=kde_radius,
                                   cell_size=cell_size,
                                   buffer=buffer)
-        points_both_filter_explode_kde_vals = wgs84_to_utm_df(points_both_filter_explode_kde_vals)
-        coord_list = [(x, y) for x, y in zip(points_both_filter_explode_kde_vals["geometry"].x, points_both_filter_explode_kde_vals["geometry"].y)]
+        
+        ##need exploded points
+        points_both_filter_explode = points_both_filter.explode(index_index=True, index_parts=False)
+        points_unfiltered_explode = points_unfiltered.explode(index_index=True, index_parts=False)
+
+        ##need unfiltered in utm
+        points_unfiltered_explode = wgs84_to_utm_df(points_unfiltered_explode)
+        ##add kde value as field to unfiltered points
+        coord_list = [(x, y) for x, y in zip(points_unfiltered_explode["geometry"].x, 
+                                             points_unfiltered_explode["geometry"].y)]
         src = rasterio.open(point_density_kde_path)
-        points_both_filter_explode_kde_vals["kde_value"] = [x for x in src.sample(coord_list)]
-        for i in range(len(points_both_filter_explode_kde_vals["kde_value"])):
-            points_both_filter_explode_kde_vals["kde_value"].iloc[i] = float(points_both_filter_explode_kde_vals["kde_value"].iloc[i][0])
-        points_both_filter_explode_kde_vals = utm_to_wgs84_df(points_both_filter_explode_kde_vals)
-        points_both_filter_explode_kde_vals = points_both_filter_explode_kde_vals[points_both_filter_explode_kde_vals['kde_value']>kde_thresh].reset_index(drop=True)
+        points_unfiltered_explode["kde_value"] = [x for x in src.sample(coord_list)]
+        for i in range(len(points_unfiltered_explode["kde_value"])):
+            points_unfiltered_explode["kde_value"].iloc[i] = float(points_unfiltered_explode["kde_value"].iloc[i][0])
+        points_unfiltered_explode["kde_value"] = points_unfiltered_explode["kde_value"].astype(float)
+
+        ##compute overall score
+        points_unfiltered_explode["overall_score"] = (points_unfiltered_explode["kde_value"]+points_unfiltered_explode["model_scores"]+points_unfiltered_explode["model_scores_seg"])/3
+        points_unfiltered_explode["overall_score"] = min_max_normalize(points_unfiltered_explode["overall_score"])
+        
+        ##save unfilted points in wgs84, this file now has image suitability, segmentation, and kde scores
+        points_unfiltered_explode = utm_to_wgs84_df(points_unfiltered_explode)
+        points_unfiltered_explode.to_file(extracted_shorelines_points_path)
+
+        ##make filtered file with kde val
+        points_both_filter_explode_kde_vals = points_unfiltered_explode[points_unfiltered_explode['kde_value']>kde_thresh].reset_index(drop=True)
+        points_both_filter_explode_kde_vals = points_both_filter_explode_kde_vals[points_both_filter_explode_kde_vals['model_scores']>=im_thresh].reset_index(drop=True)
+        points_both_filter_explode_kde_vals = points_both_filter_explode_kde_vals[points_both_filter_explode_kde_vals['model_scores_seg']>=seg_thresh].reset_index(drop=True)
         points_both_filter_explode_kde_vals.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_kde_vals.geojson'))
+        
+        ##make spatial filtered with kde vals
         envelope = gpd.read_file(shoreline_change_envelope_buffer_path)
-        points_image_seg_envelope_filter = gpd.sjoin(points_both_filter_explode, envelope, how="inner", predicate='within')
+        points_image_seg_envelope_filter = gpd.sjoin(points_both_filter_explode_kde_vals, envelope, how="inner", predicate='within')
         points_image_seg_envelope_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_and_kde_filter.geojson'))
             
     return shoreline_change_envelope_buffer_path
