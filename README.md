@@ -1,5 +1,10 @@
 # ShorelineFilter
 
+# Requirements
+Python>=3.10, geopandas, pandas, os, glob, numpy, rasterio, shapely, scikit-image, scipy, tensorflow, kneed, matplotlib, shutil, sys, osgeo/gdal
+
+A CoastSeg environment will likely have all of these requirements.
+
 # Image Suitability Filter
 
 This is a binary classification model that sorts out unsuitable imagery for shoreline extraction (among other applications). It was trained on over a million coastal satellite images from around the world. It uses an Xception-esque architecture.
