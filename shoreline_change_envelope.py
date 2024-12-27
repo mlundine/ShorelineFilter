@@ -29,16 +29,30 @@ def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
 
-def join_model_scores(good_bad, good_bad_seg, shorelines_points):
+def join_model_scores(good_bad, good_bad_seg, shorelines_points, img_type):
     shorelines_points_gdf = gpd.read_file(shorelines_points)
     shorelines_points_gdf['date'] = pd.to_datetime(shorelines_points_gdf['date'], utc=True)
+
+    try:
+        shorelines_points_gdf = shorelines_points_gdf.drop(columns=['model_scores', 
+                                                                        'model_scores_seg', 
+                                                                        'im_paths', 
+                                                                        'im_paths_seg', 
+                                                                        'Unnamed: 0_seg', 
+                                                                        'Unnamed: 0',
+                                                                        'dates_seg',
+                                                                        'kde_value', 
+                                                                        'overall_score'])
+    except:
+        pass
+
     good_bad_df = pd.read_csv(good_bad)
     good_bad_seg_df = pd.read_csv(good_bad_seg)
 
     dts = [None]*len(good_bad_df)
     for i in range(len(good_bad_df)):
         dt = os.path.basename(good_bad_df['im_paths'].iloc[i])
-        idx = dt.find('_RGB')
+        idx = dt.find('_'+img_type)
         dt = dt[0:idx]
         dts[i] = dt
     good_bad_df['dates'] = dts
@@ -48,7 +62,7 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points):
     dts_seg = [None]*len(good_bad_seg_df)
     for i in range(len(good_bad_seg_df)):
         dt = os.path.basename(good_bad_seg_df['im_paths'].iloc[i])
-        idx = dt.find('_RGB')
+        idx = dt.find('_'+img_type)
         dt = dt[0:idx]
         dts_seg[i] = dt
     good_bad_seg_df['dates'] = dts_seg
@@ -65,7 +79,12 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points):
                                                right_on='dates',
                                                suffixes=['', '_seg']
                                                         )
-
+    shorelines_points_gdf = shorelines_points_gdf.drop(columns=['Unnamed: 0_seg', 
+                                                                'Unnamed: 0',
+                                                                'dates_seg',
+                                                                ]
+                                                                )
+    print(shorelines_points_gdf.columns)
     shorelines_points_gdf.to_file(shorelines_points)
 
 def wgs84_to_utm_df(geo_df):
@@ -278,7 +297,8 @@ def get_point_density_kde_multiple_sessions(home,
                                             buffer=50,
                                             im_thresh=0.335,
                                             seg_thresh=0.457,
-                                            kde_thresh=0.10):
+                                            kde_thresh=0.10,
+                                            img_type='RGB'):
     """
     Computes spatial kde on multiple coastseg shoreline extraction sessions
     inputs:
@@ -294,21 +314,14 @@ def get_point_density_kde_multiple_sessions(home,
         site = os.path.join(home, site)
         print('doing ' + site)
         extracted_shorelines_points_path = os.path.join(site, 'extracted_shorelines_points.geojson')
-        good_bad =  os.path.join(site, 'good_bad_seg.csv')
-        good_bad_seg = os.path.join(site, 'good_bad.csv')
+        good_bad =  os.path.join(site, 'good_bad.csv')
+        good_bad_seg = os.path.join(site, 'good_bad_seg.csv')
 
-        ##join model scores to points file
-        try:
-            join_model_scores(good_bad, good_bad_seg, extracted_shorelines_points_path)
-        except:
-            print('already joined')
-            pass
+        join_model_scores(good_bad, good_bad_seg, extracted_shorelines_points_path, img_type)
         
         ##making points files
         ##unfiltered
         points_unfiltered = gpd.read_file(extracted_shorelines_points_path)
-        points_unfiltered['year'] = pd.to_datetime(points_unfiltered['date']).dt.year
-        
         ##just image suitability filter
         points_image_filter = points_unfiltered[points_unfiltered['model_scores']>=im_thresh]
         points_image_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_filter.geojson'))
@@ -370,3 +383,7 @@ def get_point_density_kde_multiple_sessions(home,
         points_image_seg_envelope_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_and_kde_filter.geojson'))
             
     return shoreline_change_envelope_buffer_path
+
+
+
+            
