@@ -34,15 +34,13 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points, img_type):
     shorelines_points_gdf['date'] = pd.to_datetime(shorelines_points_gdf['date'], utc=True)
 
     try:
-        shorelines_points_gdf = shorelines_points_gdf.drop(columns=['model_scores', 
-                                                                        'model_scores_seg', 
-                                                                        'im_paths', 
-                                                                        'im_paths_seg', 
-                                                                        'Unnamed: 0_seg', 
-                                                                        'Unnamed: 0',
-                                                                        'dates_seg',
-                                                                        'kde_value', 
-                                                                        'overall_score'])
+        cols = list(shorelines_points_gdf.columns)
+        print(cols)
+        keep_cols = ['date', 'satname', 'geoaccuracy', 'cloud_cover', 'geometry']
+        for col in cols:
+            if col not in keep_cols:
+                shorelines_points_gdf = shorelines_points_gdf.drop(columns=[col])
+        print(shorelines_points_gdf.columns)
     except:
         pass
 
@@ -52,7 +50,7 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points, img_type):
     dts = [None]*len(good_bad_df)
     for i in range(len(good_bad_df)):
         dt = os.path.basename(good_bad_df['im_paths'].iloc[i])
-        idx = dt.find('_'+img_type)
+        idx = dt.find('_RGB')
         dt = dt[0:idx]
         dts[i] = dt
     good_bad_df['dates'] = dts
@@ -383,6 +381,7 @@ def get_point_density_kde_multiple_sessions(home,
         points_image_seg_envelope_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_and_kde_filter.geojson'))
             
     return shoreline_change_envelope_buffer_path
+
 
 
 
