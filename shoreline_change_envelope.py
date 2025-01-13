@@ -35,12 +35,10 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points, img_type):
 
     try:
         cols = list(shorelines_points_gdf.columns)
-        print(cols)
         keep_cols = ['date', 'satname', 'geoaccuracy', 'cloud_cover', 'geometry']
         for col in cols:
             if col not in keep_cols:
                 shorelines_points_gdf = shorelines_points_gdf.drop(columns=[col])
-        print(shorelines_points_gdf.columns)
     except:
         pass
 
@@ -82,7 +80,6 @@ def join_model_scores(good_bad, good_bad_seg, shorelines_points, img_type):
                                                                 'dates_seg',
                                                                 ]
                                                                 )
-    print(shorelines_points_gdf.columns)
     shorelines_points_gdf.to_file(shorelines_points)
 
 def wgs84_to_utm_df(geo_df):
