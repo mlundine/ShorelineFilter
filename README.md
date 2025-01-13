@@ -20,6 +20,50 @@ A CoastSeg environment will likely have all of these requirements.
 
 # Image Suitability Filter
 
+* Training and testing the model
+
+```
+def train_and_test(dataset):
+    """
+    trains, tests, outputs metric figures
+    inputs:
+    dataset (str): path to the dataset
+                   dataset
+                          train
+                               good
+                               bad
+                          test
+                               good
+                               bad
+    """
+```
+
+* Running model in inference mode
+
+```
+def run_inference_rgb(path_to_model_ckpt,
+                      path_to_inference_imgs,
+                      output_folder,
+                      result_path,
+                      threshold=0.335,
+                      sort=True):
+    """
+    Runs the trained model on images, classifying them either as good or bad
+    Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
+    Sorts the images into good or bad folders
+    Images should be '.jpg'
+    inputs:
+    path_to_model_ckpt (str): path to the saved keras model
+    path_to_inference_imgs (str): path to the folder containing images to run the model on
+    output_folder (str): path to save outputs to
+    result_path (str): csv path to save results to
+    threshold (float): threshold on sigmoid of model output (ex: 0.6 means mark images as good if model output is >= 0.6, or 60% 		       sure it's a good image)
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
+    returns:
+    result_path (str): csv path of saved results
+    """
+```
+
 This is a binary classification model that sorts out unsuitable imagery for shoreline extraction (among other applications). It was trained on over a million coastal satellite images from around the world. It uses an Xception-esque architecture.
 
 ![training data](Figures/ImageSuitability/spatial_domain.png)
@@ -47,6 +91,52 @@ Above shows the distribution of sigmoid scores (probability of image being 'good
 Above shows the ROC curve. The RGB model is slightly more effective than the grayscale model.
 
 # Image Segmentation Filter
+
+* Training and testing the model
+
+```
+def train_and_test(dataset):
+    """
+    trains, tests, outputs metric figures
+    inputs:
+    dataset (str): path to the dataset
+                   dataset
+                          train
+                               good
+                               bad
+                          test
+                               good
+                               bad
+    """
+```
+
+* Running model in inference mode
+
+```
+def run_inference_rgb(path_to_model_ckpt,
+                      path_to_inference_imgs,
+                      output_folder,
+                      result_path,
+                      threshold=0.457,
+                      sort=True):
+    """
+    Runs the trained model on images, classifying them either as good or bad
+    Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
+    Sorts the images into good or bad folders
+    Images should be '.jpg'
+    inputs:
+    path_to_model_ckpt (str): path to the saved keras model
+    path_to_inference_imgs (str): path to the folder containing images to run the model on
+    output_folder (str): path to save outputs to
+    result_path (str): csv path to save results to
+    threshold (float): threshold on sigmoid of model output (ex: 0.6 means mark images as good if model output is >= 0.6, or 60% 		       sure it's a good image)
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
+
+    returns:
+    result_path (str): csv path of saved results
+```
+
+
 
 This is a binary classification model that sorts out bad segmentation outputs. It was trained on just over 2,000 images from around the world. It's a pretty basic 2D convolutional neural network. 
 
