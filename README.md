@@ -20,6 +20,8 @@ A CoastSeg environment will likely have all of these requirements.
 
 # Image Suitability Filter
 
+* Modules contained in image_filter.py
+
 * Training and testing the model
 
 ```
@@ -92,6 +94,8 @@ Above shows the ROC curve. The RGB model is slightly more effective than the gra
 
 # Image Segmentation Filter
 
+* Modules contained in image_segmentation_filter.py
+
 * Training and testing the model
 
 ```
@@ -157,6 +161,33 @@ Above is the distribution of sigmoid scores (probability of a good segmentation)
 Above is the ROC curve for this model.
 
 # Shoreline Change Envelope (KDE filter)
+
+* Modules contained in shoreline_change_envelope.py
+
+* Running on a single session
+
+```
+def get_point_density_kde(extracted_shorelines_points_path, 
+                          point_density_kde_path,
+                          otsu_path,
+                          shoreline_change_envelope_path,
+                          shoreline_change_envelope_buffer_path,
+                          cell_size=20,
+                          buffer=50):
+    """
+    Makes a point density heat map, otsu threshold, polygonized result, buffered polygonized result
+    inputs:
+    extracted_shorelines_points_path (str): path to the extracted shorelines as points
+    point_density_kde_path (str): path to save the point density result to (.tif)
+    otsu_path (str): path to save otsu to (.tif)
+    shoreline_change_envelope_path (str): path to save shoreline change envelope to (.geojson)
+    shoreline_change_envelope_buffer_path (str): path to save the buffered shoreline change envelope to (.geojson)
+    cell_size (int): resolution of the output heatmap in meters, default is 20 m, can go finer if needed but will slow this down
+    buffer (float): amount to buffer the envelope, default = 50 m
+    outputs:
+    point_density_kde_path (str): path to the result
+    """
+```
 
 This is just a method for computing a heat map of the extracted shoreline points, and then converting that heat map into a polygon feature that can be used as a spatial filter for extracted shorelines. Basically, we remove erroneous shoreline points by only keeping where most of the shorelines extracted from a long timeseries of satellite imagery fall. Shoreline points way outside of the average location get thrown out.
 

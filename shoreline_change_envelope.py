@@ -144,13 +144,9 @@ def point_density_grid(points_path, save_path, cell_size):
         raster[row_idx, col_idx] = row['point_count']
 
     raster = min_max_normalize(raster)
-    print(max(raster.ravel()))
-    print(min(raster.ravel()))
     raster = gaussian_filter(raster, sigma=3)  # Adjust sigma for smoothing level  
     raster = min_max_normalize(raster)
   
-    print(max(raster.ravel()))
-    print(min(raster.ravel()))
     ##making a path for the output grid
     point_density_grid_path = save_path
     ##save the grid
@@ -179,8 +175,6 @@ def compute_otsu_threshold(in_tiff, out_tiff):
     # Need to make nodata values zero or else the threshold will be just data vs. nodata
     # This works for our example because point density is always greater than or equal to zero.
     image[image==src.meta['nodata']]=0
-    print(min(image.ravel()))
-    print(max(image.ravel()))
     threshold = threshold_otsu(image)
     thresholds = threshold_multiotsu(image)
 
@@ -249,26 +243,22 @@ def get_point_density_kde(extracted_shorelines_points_path,
                           otsu_path,
                           shoreline_change_envelope_path,
                           shoreline_change_envelope_buffer_path,
-                          kde_radius=80,
                           cell_size=20,
                           buffer=50):
     """
-    Makes a point density heat map and saves as a geotiff using spatial-kde
+    Makes a point density heat map, otsu threshold, polygonized result, buffered polygonized result
     inputs:
     extracted_shorelines_points_path (str): path to the extracted shorelines as points
-    point_density_kde_path (str): path to save the result to
-    kde_radius (int, optional): radius for the spatial KDE, making this smaller makes the heatmap finer, default is 80 meters
-    cell_size (int, optional): resolution of the output heatmap in meters, default is 15 m, can go finer if needed but will slow this down
+    point_density_kde_path (str): path to save the point density result to (.tif)
+    otsu_path (str): path to save otsu to (.tif)
+    shoreline_change_envelope_path (str): path to save shoreline change envelope to (.geojson)
+    shoreline_change_envelope_buffer_path (str): path to save the buffered shoreline change envelope to (.geojson)
+    cell_size (int): resolution of the output heatmap in meters, default is 20 m, can go finer if needed but will slow this down
+    buffer (float): amount to buffer the envelope, default = 50 m
     outputs:
     point_density_kde_path (str): path to the result
     """
     points = gpd.read_file(extracted_shorelines_points_path)
-
-    ## need in utm
-    #points_utm = wgs84_to_utm_df(points)
-
-    ## need each individual point
-    #points_exploded = points_utm.explode(index_index=True, index_parts=False)
 
     ## calling the spatial kde function
     print('computing density grid')
@@ -300,9 +290,11 @@ def get_point_density_kde_multiple_sessions(home,
     home (str): path to the sessions
     kde_radius (int): radius for the kde
     cell_size (int): cell size of kde raster
+    buffer (float): amount to buffer envelope
     im_thresh (float): threshold for image suitability filter
     seg_thresh (float): threshold for segmentation filter
     kde_thresh (float): threshold for kde filter
+    img_type (str): 'RGB' 'MNDWI' or 'NDWI'
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
