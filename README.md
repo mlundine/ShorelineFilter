@@ -3,6 +3,19 @@
 # Requirements
 Python>=3.10, geopandas, pandas, os, glob, numpy, rasterio, shapely, scikit-image, scipy, tensorflow, kneed, matplotlib, shutil, sys, osgeo/gdal
 
+```
+conda update -n base conda
+conda clean --all
+python3 -m pip install --upgrade pip
+```
+
+```
+conda create -n shoreline_filter python=3.10 -y
+conda activate shoreline_filter
+conda install tensorflow geopandas pandas rasterio shapely scikit-image scipy matplotlib
+pip install kneed
+```
+
 A CoastSeg environment will likely have all of these requirements.
 
 # Image Suitability Filter
