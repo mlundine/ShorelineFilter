@@ -9,14 +9,19 @@ conda clean --all
 python3 -m pip install --upgrade pip
 ```
 
+Make environment, download requirements. For GPU, set up a gym environment from instructions here: 
+
+[gym_install](https://github.com/Doodleverse/Segmentation_Gym?tab=readme-ov-file#%EF%B8%8F-installation)
+
 ```
 conda create -n shoreline_filter python=3.10 -y
 conda activate shoreline_filter
-conda install tensorflow geopandas pandas rasterio shapely scikit-image scipy matplotlib
+conda install tensorflow geopandas pandas rasterio shapely scikit-image scipy matplotlib pygraphviz -y
 pip install kneed
+pip install pydot
 ```
 
-A CoastSeg environment will likely have all of these requirements.
+A CoastSeg environment will likely have most of these requirements.
 
 # Image Suitability Filter
 
