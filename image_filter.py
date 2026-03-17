@@ -12,10 +12,21 @@ from tensorflow.keras import layers
 import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
+import sys
+import rasterio
+from PIL import Image
+
+def get_script_path():
+    return os.path.dirname(os.path.abspath(__file__))
 
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
+
+def rescale(arr):
+    arr_min = np.nanmin(arr)
+    arr_max = np.nanmax(arr)
+    return (arr - arr_min) / (arr_max - arr_min)
 
 def scheduler(epoch, lr):
     return lr * np.exp(-0.1) 
@@ -318,13 +329,33 @@ def run_inference_gray(path_to_model_ckpt,
                     output_folder,
                     threshold=threshold)
     return result_path
+def get_image_score(inference_img):
+    """
+    Runs the trained model on image, classifying as good or bad
+    inputs:
+    path_to_inference_img (str): path to the segmentation image
+
+    returns:
+    score (float): segmentation score
+    """
+    path_to_model_ckpt = os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5')
+    image_size = (128, 128)
+    model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
+    model.load_weights(path_to_model_ckpt)
+    img_array = inference_img
+    img_array = tf.expand_dims(img_array, 0)
+    predictions = model.predict(img_array)
+    score = float(keras.activations.sigmoid(predictions[0][0]))
+    return score
 
 def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,
                       result_path,
                       threshold=0.335,
-                      sort=True):
+                      sort=True,
+                      input_df=False,
+                      gpu=0):
     """
     Runs the trained model on images, classifying them either as good or bad
     Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
@@ -340,6 +371,11 @@ def run_inference_rgb(path_to_model_ckpt,
     returns:
     result_path (str): csv path of saved results
     """
+    # if gpu==-1:
+    #     tf.config.set_visible_devices([], 'GPU')
+    # else:
+    #     gpus = tf.config.list_physical_devices('GPU')
+    #     tf.config.set_visible_devices(gpus[gpu], 'GPU')
     try:
         os.mkdir(output_folder)
     except:
@@ -347,17 +383,37 @@ def run_inference_rgb(path_to_model_ckpt,
     image_size = (128, 128)
     model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
     model.load_weights(path_to_model_ckpt)
-    types = ('*.jpg', '*.jpeg', '*.png') 
-    im_paths = []
-    for files in types:
-        im_paths.extend(glob.glob(os.path.join(path_to_inference_imgs, files)))
+    if input_df==False:
+        types = ('*.jpg', '*.jpeg', '*.png', '.tif') 
+        im_paths = []
+        for files in types:
+            im_paths.extend(glob.glob(os.path.join(path_to_inference_imgs, files)))
+    else:
+        im_paths = list(path_to_inference_imgs['ms_tiff_path'].values)
     model_scores = [None]*len(im_paths)
     im_classes = [None]*len(im_paths)
     i=0
     for im_path in im_paths:
         print(im_path)
-        img = keras.utils.load_img(im_path, color_mode='rgb',target_size=image_size)
-        img_array = keras.utils.img_to_array(img)
+        if im_path.endswith('.tif'):
+            with rasterio.open(im_path) as src:
+                blue = src.read(1)
+                green = src.read(2)
+                red = src.read(3)
+                mask_value = src.meta['nodata']
+            blue[blue==mask_value]=0
+            red[red==mask_value]=0
+            green[green==mask_value]=0
+            img_array = rescale(np.dstack([red,green,blue]))*255
+            img_array = img_array.astype('uint8')
+            image = Image.fromarray(img_array)
+            image = image.resize(image_size)
+            img_array = keras.utils.img_to_array(image)
+            
+        else:       
+            img = keras.utils.load_img(im_path, color_mode='rgb',target_size=image_size)
+            img_array = keras.utils.img_to_array(img)
+
         img_array = tf.expand_dims(img_array, 0)
         predictions = model.predict(img_array)
         score = float(keras.activations.sigmoid(predictions[0][0]))
@@ -486,11 +542,14 @@ def training(path_to_training_data,
 
     return best_ckpt_file
 
-def inference_multiple_sessions(home, threshold, model='rgb'):
+def inference_multiple_sessions(home, threshold, model='rgb', sort=True):
     """
     Runs filter on multiple CoastSeg data sessions, will skip a site if there is already a good_bad.csv
     inputs:
     home (str): path to where each data folder is
+    threshold (float): threshold on sigmoid of model output (ex: 0.6 means mark images as good if model output is >= 0.6, or 60% sure it's a good image)
+    model (str): 'rgb' or 'gray'
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
@@ -502,18 +561,20 @@ def inference_multiple_sessions(home, threshold, model='rgb'):
         else:
             print('doing ' + site)
             if model=='rgb':
-                run_inference_rgb(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                run_inference_rgb(os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5'),
                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                   os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                   os.path.join(site, 'good_bad.csv'),
-                                  threshold
+                                  threshold,
+                                  sort=sort
                                   )
             else:
-                run_inference_gray(os.path.join(os.getcwd(), 'models', 'image_rgb', 'best.h5'),
+                run_inference_gray(os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5'),
                                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                    os.path.join(site, 'jpg_files', 'preprocessed', 'RGB'),
                                    os.path.join(site, 'good_bad.csv'),
-                                   threshold
+                                   threshold,
+                                   sort=sort
                                    )
 
 def sort_multiple_sessions(home, threshold, model='rgb'):
@@ -545,52 +606,52 @@ def train_and_test(dataset):
                                bad
     """
     try:
-        os.mkdir(os.path.join(os.getcwd(), 'test_results'))
+        os.mkdir(os.path.join(get_script_path(), 'test_results'))
     except:
         pass
     ##train grayscale model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50,
             mode='gray')
     ##train rgb model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50,
             mode='rgb')
     ##test gray model
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'bad')
-    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+    run_inference_gray(os.path.join(get_script_path(), 'models', 'gray', 'best.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_gray.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_gray.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'good')
-    run_inference_gray(os.path.join(os.getcwd(), 'models', 'gray', 'best.h5'),
+    run_inference_gray(os.path.join(get_script_path(), 'models', 'gray', 'best.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_gray.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_gray.csv'),
                     threshold=0.20,
                     sort=False)
 
     ##test rgb model
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'bad')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'rgb', 'best.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_rgb.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_rgb.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'good')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'rgb', 'best.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'rgb', 'best.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_rgb.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_rgb.csv'),
                     threshold=0.20,
                     sort=False)
     ##make figures

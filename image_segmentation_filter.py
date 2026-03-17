@@ -13,6 +13,9 @@ import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
 
+def get_script_path():
+    return os.path.dirname(os.path.abspath(__file__))
+
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
@@ -156,11 +159,35 @@ def sort_images(inference_df_path,
             output_image_path = os.path.join(bad_dir, im_name)
             shutil.move(input_image_path, output_image_path)
 
+def get_segmentation_score(inference_img, gpu=0):
+    """
+    Runs the trained model on image, classifying as good or bad
+    inputs:
+    path_to_inference_img (str): path to the segmentation image
+
+    returns:
+    score (float): segmentation score
+    """
+    # if gpu==-1:
+    #     tf.config.set_visible_devices([], 'GPU')
+    # else:
+    #     gpus = tf.config.list_physical_devices('GPU')
+    #     tf.config.set_visible_devices(gpus[gpu], 'GPU')
+    path_to_model_ckpt = os.path.join(get_script_path(), 'models', 'segmentation_rgb', 'best_seg.h5')
+    image_size = (512, 512)
+    model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
+    model.load_weights(path_to_model_ckpt)
+    img_array = inference_img
+    img_array = tf.expand_dims(img_array, 0)
+    predictions = model.predict(img_array)
+    score = float(keras.activations.sigmoid(predictions[0][0]))
+    return score
+
 def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,
                       result_path,
-                      threshold=0.457
+                      threshold=0.457,
                       sort=True):
     """
     Runs the trained model on images, classifying them either as good or bad
@@ -308,13 +335,13 @@ def training(path_to_training_data,
 
     return best_ckpt_file
 
-def inference_multiple_sessions(home, threshold):
+def inference_multiple_sessions(home, threshold, sort=True):
     """
     Runs filter on multiple CoastSeg segmentation sessions, will skip a site if there is already a good_bad.csv
     inputs:
     home (str): path to where each data folder is
     threshold (float): threshold value for model
-    
+    sort (bool): True to sort images, False to not sort (this is mainly for testing)
     """
     sites = get_immediate_subdirectories(home)
     for site in sites:
@@ -325,11 +352,12 @@ def inference_multiple_sessions(home, threshold):
             continue
         else:
             print('doing ' + site)
-            run_inference_rgb(os.path.join(os.getcwd(), 'models', 'segmentation_rgb', 'best.h5'),
+            run_inference_rgb(os.path.join(get_script_path(), 'models', 'segmentation_rgb', 'best_seg.h5'),
                               os.path.join(site),
                               os.path.join(site),
                               os.path.join(site, 'good_bad_seg.csv'),
-                              threshold
+                              threshold,
+                              sort=sort
                               )
  
 def train_and_test(dataset):
@@ -346,28 +374,28 @@ def train_and_test(dataset):
                                bad
     """
     try:
-        os.mkdir(os.path.join(os.getcwd(), 'test_results'))
+        os.mkdir(os.path.join(get_script_path(), 'test_results'))
     except:
         pass
 
     ##train model
     training(os.path.join(dataset,'train'),
-            os.getcwd(),
+            get_script_path(),
             epochs=50)
     test_dir = os.path.join(dataset, 'test')
     test_dir_bad = os.path.join(dataset, 'test', 'bad')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'best_seg.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'best_seg.h5'),
                     test_dir_bad,
                     test_dir_bad,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_bad_seg.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_bad_seg.csv'),
                     threshold=0.20,
                     sort=False)
     test_dir = os.path.join(dataset, 'test')
     test_dir_good = os.path.join(dataset, 'test', 'good')
-    run_inference_rgb(os.path.join(os.getcwd(), 'models', 'best_seg.h5'),
+    run_inference_rgb(os.path.join(get_script_path(), 'models', 'best_seg.h5'),
                     test_dir_good,
                     test_dir_good,
-                    os.path.join(os.getcwd(), 'test_results', 'result_test_good_seg.csv'),
+                    os.path.join(get_script_path(), 'test_results', 'result_test_good_seg.csv'),
                     threshold=0.20,
                     sort=False)
     os.system('python metrics_seg.py')
