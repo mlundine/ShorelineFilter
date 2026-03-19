@@ -75,7 +75,7 @@ class Window(QMainWindow):
         if home:        
             image_segmentation_filter.inference_multiple_sessions(home, threshold)
 
-    def run_spatial_kde_filter(self, radius, cell_size, buffer):
+    def run_spatial_kde_filter(self, cell_size, buffer):
         options = QFileDialog.Options()
         shorelines, _ = QFileDialog.getOpenFileName(self,"Select Extracted Shorelines Points GeoJSON", "","GeoJSON (*.geojson)", options=options)
         if shorelines:
@@ -90,19 +90,18 @@ class Window(QMainWindow):
                                                             otsu_path,
                                                             shoreline_change_envelope_path,
                                                             shoreline_change_envelope_buffer_path,
-                                                            kde_radius=buffer,
-                                                            cell_size=cell_size
+                                                            cell_size=cell_size,
+                                                            buffer=buffer
                                                             )
         
-    def run_multi_spatial_kde_filter(self, radius, cell_size, buffer):
+    def run_multi_spatial_kde_filter(self, cell_size, buffer):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         home = str(QFileDialog.getExistingDirectory(self, "Select Sessions Folder"))
         if home:        
             get_point_density_kde_multiple_sessions(home,
-                                                    kde_radius=80,
-                                                    cell_size=15,
-                                                    buffer=50)
+                                                    cell_size=cell_size,
+                                                    buffer=buffer)
         
     def home(self):
         self.scroll = QScrollArea()             # Scroll Area which contains the widgets, set as the centralWidget
@@ -151,15 +150,6 @@ class Window(QMainWindow):
         #spatial kde button
         spatial_kde_filter_multi = QPushButton('Spatial KDE Filter Multiple Sessions')
         self.vbox.addWidget(spatial_kde_filter_multi, 1, 2)
-        
-        #spatial kde radiuds
-        radius_label = QLabel('Radius (m)')
-        radius_slider = QSpinBox()
-        radius_slider.setMinimum(1)
-        radius_slider.setMaximum(100)
-        radius_slider.setValue(80)
-        self.vbox.addWidget(radius_label, 2, 2)
-        self.vbox.addWidget(radius_slider, 3, 2)
 
         #cell size
         cell_size_label = QLabel('Cell Size (m)')
@@ -184,8 +174,8 @@ class Window(QMainWindow):
         image_suitability_filter_multi.clicked.connect(lambda: self.run_multi_image_suitability_filter(image_suitability_threshold.value()))
         segmentation_filter.clicked.connect(lambda: self.run_image_segmentation_filter(segmentation_filter_threshold.value()))
         segmentation_filter_multi.clicked.connect(lambda: self.run_multi_image_segmentation_filter(segmentation_filter_threshold.value()))
-        spatial_kde_filter.clicked.connect(lambda: self.run_spatial_kde_filter(radius_slider.value(), cell_size_slider.value(), buffer_slider.value()))
-        spatial_kde_filter_multi.clicked.connect(lambda: self.run_multi_spatial_kde_filter(radius_slider.value(), cell_size_slider.value(), buffer_slider.value()))
+        spatial_kde_filter.clicked.connect(lambda: self.run_spatial_kde_filter(cell_size_slider.value(), buffer_slider.value()))
+        spatial_kde_filter_multi.clicked.connect(lambda: self.run_multi_spatial_kde_filter(cell_size_slider.value(), buffer_slider.value()))
         
         #Scroll policies
         self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)

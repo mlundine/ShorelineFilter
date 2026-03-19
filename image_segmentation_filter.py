@@ -159,6 +159,30 @@ def sort_images(inference_df_path,
             output_image_path = os.path.join(bad_dir, im_name)
             shutil.move(input_image_path, output_image_path)
 
+def get_segmentation_score(inference_img, gpu=0):
+    """
+    Runs the trained model on image, classifying as good or bad
+    inputs:
+    path_to_inference_img (str): path to the segmentation image
+
+    returns:
+    score (float): segmentation score
+    """
+    # if gpu==-1:
+    #     tf.config.set_visible_devices([], 'GPU')
+    # else:
+    #     gpus = tf.config.list_physical_devices('GPU')
+    #     tf.config.set_visible_devices(gpus[gpu], 'GPU')
+    path_to_model_ckpt = os.path.join(get_script_path(), 'models', 'segmentation_rgb', 'best_seg.h5')
+    image_size = (512, 512)
+    model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
+    model.load_weights(path_to_model_ckpt)
+    img_array = inference_img
+    img_array = tf.expand_dims(img_array, 0)
+    predictions = model.predict(img_array)
+    score = float(keras.activations.sigmoid(predictions[0][0]))
+    return score
+
 def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,

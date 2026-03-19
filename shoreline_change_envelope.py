@@ -17,10 +17,12 @@ import glob
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
+from rasterio.features import rasterize
 from shapely.geometry import box
 from skimage.filters import threshold_otsu
 from skimage.filters import threshold_multiotsu
 from scipy.ndimage import gaussian_filter
+from shapely.geometry import LineString, MultiPoint, Point, Polygon
 
 def get_script_path():
     return os.path.dirname(os.path.abspath(__file__))
@@ -111,6 +113,32 @@ def min_max_normalize(arr):
     max_val = np.max(arr)
     return (arr - min_val) / (max_val - min_val)
 
+def convert_linestrings_to_multipoints(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Convert LineString geometries in a GeoDataFrame to MultiPoint geometries.
+
+    Args:
+    - gdf (gpd.GeoDataFrame): The input GeoDataFrame.
+
+    Returns:
+    - gpd.GeoDataFrame: A new GeoDataFrame with MultiPoint geometries. If the input GeoDataFrame
+                        already contains MultiPoints, the original GeoDataFrame is returned.
+    """
+
+    # Check if all geometries in the gdf are MultiPoints
+    if all(gdf.geometry.type == "MultiPoint"):
+        return gdf
+
+    def linestring_to_multipoint(linestring):
+        if isinstance(linestring, LineString):
+            return MultiPoint(linestring.coords)
+        return linestring
+
+    # Convert each LineString to a MultiPoint
+    gdf["geometry"] = gdf["geometry"].apply(linestring_to_multipoint)
+
+    return gdf
+
 def point_density_grid(points_path, save_path, cell_size):
     """
     This is a slow way of making a point density grid.
@@ -121,8 +149,13 @@ def point_density_grid(points_path, save_path, cell_size):
     outputs:
     point_density_grid_path (str): path to the density grid as a geotiff
     """
-    points = gpd.read_file(points_path)
-    points_utm = wgs84_to_utm_df(points)
+    if type(points_path)==str:
+        points = gpd.read_file(points_path)
+    else:
+        points = points_path
+    points = convert_linestrings_to_multipoints(points)
+    crs = points.estimate_utm_crs()
+    points_utm = points.to_crs(crs)
     points_exploded = points_utm.explode(index_parts=True)
 
     # Create a grid
@@ -133,15 +166,21 @@ def point_density_grid(points_path, save_path, cell_size):
     grid = gpd.GeoDataFrame({'geometry': grid_cells})
 
     # Count points in each grid cell
-    grid['point_count'] = grid.apply(lambda cell: points_exploded.within(cell.geometry).sum(), axis=1)
-
+    #grid['point_count'] = grid.apply(lambda cell: points_exploded.within(cell.geometry).sum(), axis=1)
+    grid = gpd.GeoDataFrame({'geometry': grid_cells}, crs=points_utm.crs)
+    joined = gpd.sjoin(points_exploded, grid, predicate='within', how='left')
+    counts = joined.groupby(joined.index_right).size()
+    grid['point_count'] = grid.index.map(counts).fillna(0)
+        
     # Create the raster
     transform = from_origin(minx, maxy, cell_size, cell_size)
-    raster = np.zeros((len(y_coords), len(x_coords)))
-    for idx, row in grid.iterrows():
-        row_idx = int((maxy - row.geometry.bounds[1]) / cell_size)
-        col_idx = int((row.geometry.bounds[0] - minx) / cell_size)
-        raster[row_idx, col_idx] = row['point_count']
+    shapes = [(row.geometry, row.point_count) for _, row in grid.iterrows()]
+    raster = rasterize(shapes, out_shape=(len(y_coords), len(x_coords)), transform=transform, dtype='float32')
+    # raster = np.zeros((len(y_coords), len(x_coords)))
+    # for idx, row in grid.iterrows():
+    #     row_idx = int((maxy - row.geometry.bounds[1]) / cell_size)
+    #     col_idx = int((row.geometry.bounds[0] - minx) / cell_size)
+    #     raster[row_idx, col_idx] = row['point_count']
 
     raster = min_max_normalize(raster)
     raster = gaussian_filter(raster, sigma=3)  # Adjust sigma for smoothing level  
@@ -258,7 +297,6 @@ def get_point_density_kde(extracted_shorelines_points_path,
     outputs:
     point_density_kde_path (str): path to the result
     """
-    points = gpd.read_file(extracted_shorelines_points_path)
 
     ## calling the spatial kde function
     print('computing density grid')
@@ -320,10 +358,10 @@ def get_point_density_kde_multiple_sessions(home,
         points_both_filter.to_file(os.path.join(site, 'extracted_shorelines_points_image_and_seg_filter.geojson'))
         
         ##make paths for kde files
-        point_density_kde_path =  os.path.join(site, 'spatial_kde.tif')
-        otsu_path = os.path.join(site, 'spatial_kde_otsu.tif')
-        shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope.geojson')
-        shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer.geojson')
+        point_density_kde_path =  os.path.join(site, 'spatial_kde_fine.tif')
+        otsu_path = os.path.join(site, 'spatial_kde_otsu_fine.tif')
+        shoreline_change_envelope_path = os.path.join(site, 'shoreline_change_envelope_fine.geojson')
+        shoreline_change_envelope_buffer_path = os.path.join(site, 'shoreline_change_envelope_buffer_fine.geojson')
 
         ##get kde files
         get_point_density_kde(extracted_shorelines_points_path,

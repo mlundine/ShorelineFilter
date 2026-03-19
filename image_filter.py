@@ -13,6 +13,8 @@ import pandas as pd
 import shutil
 import matplotlib.pyplot as plt
 import sys
+import rasterio
+from PIL import Image
 
 def get_script_path():
     return os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +22,11 @@ def get_script_path():
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
             if os.path.isdir(os.path.join(a_dir, name))]
+
+def rescale(arr):
+    arr_min = np.nanmin(arr)
+    arr_max = np.nanmax(arr)
+    return (arr - arr_min) / (arr_max - arr_min)
 
 def scheduler(epoch, lr):
     return lr * np.exp(-0.1) 
@@ -322,13 +329,33 @@ def run_inference_gray(path_to_model_ckpt,
                     output_folder,
                     threshold=threshold)
     return result_path
+def get_image_score(inference_img):
+    """
+    Runs the trained model on image, classifying as good or bad
+    inputs:
+    path_to_inference_img (str): path to the segmentation image
+
+    returns:
+    score (float): segmentation score
+    """
+    path_to_model_ckpt = os.path.join(get_script_path(), 'models', 'image_rgb', 'best.h5')
+    image_size = (128, 128)
+    model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
+    model.load_weights(path_to_model_ckpt)
+    img_array = inference_img
+    img_array = tf.expand_dims(img_array, 0)
+    predictions = model.predict(img_array)
+    score = float(keras.activations.sigmoid(predictions[0][0]))
+    return score
 
 def run_inference_rgb(path_to_model_ckpt,
                       path_to_inference_imgs,
                       output_folder,
                       result_path,
                       threshold=0.335,
-                      sort=True):
+                      sort=True,
+                      input_df=False,
+                      gpu=0):
     """
     Runs the trained model on images, classifying them either as good or bad
     Saves the results to a csv (image_path, class (good or bad), score (0 to 1)
@@ -344,6 +371,11 @@ def run_inference_rgb(path_to_model_ckpt,
     returns:
     result_path (str): csv path of saved results
     """
+    # if gpu==-1:
+    #     tf.config.set_visible_devices([], 'GPU')
+    # else:
+    #     gpus = tf.config.list_physical_devices('GPU')
+    #     tf.config.set_visible_devices(gpus[gpu], 'GPU')
     try:
         os.mkdir(output_folder)
     except:
@@ -351,17 +383,37 @@ def run_inference_rgb(path_to_model_ckpt,
     image_size = (128, 128)
     model = define_model(input_shape=image_size + (3,), mode='inference', num_classes=2)
     model.load_weights(path_to_model_ckpt)
-    types = ('*.jpg', '*.jpeg', '*.png') 
-    im_paths = []
-    for files in types:
-        im_paths.extend(glob.glob(os.path.join(path_to_inference_imgs, files)))
+    if input_df==False:
+        types = ('*.jpg', '*.jpeg', '*.png', '.tif') 
+        im_paths = []
+        for files in types:
+            im_paths.extend(glob.glob(os.path.join(path_to_inference_imgs, files)))
+    else:
+        im_paths = list(path_to_inference_imgs['ms_tiff_path'].values)
     model_scores = [None]*len(im_paths)
     im_classes = [None]*len(im_paths)
     i=0
     for im_path in im_paths:
         print(im_path)
-        img = keras.utils.load_img(im_path, color_mode='rgb',target_size=image_size)
-        img_array = keras.utils.img_to_array(img)
+        if im_path.endswith('.tif'):
+            with rasterio.open(im_path) as src:
+                blue = src.read(1)
+                green = src.read(2)
+                red = src.read(3)
+                mask_value = src.meta['nodata']
+            blue[blue==mask_value]=0
+            red[red==mask_value]=0
+            green[green==mask_value]=0
+            img_array = rescale(np.dstack([red,green,blue]))*255
+            img_array = img_array.astype('uint8')
+            image = Image.fromarray(img_array)
+            image = image.resize(image_size)
+            img_array = keras.utils.img_to_array(image)
+            
+        else:       
+            img = keras.utils.load_img(im_path, color_mode='rgb',target_size=image_size)
+            img_array = keras.utils.img_to_array(img)
+
         img_array = tf.expand_dims(img_array, 0)
         predictions = model.predict(img_array)
         score = float(keras.activations.sigmoid(predictions[0][0]))
